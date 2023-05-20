@@ -6,15 +6,15 @@
 #include <openssl/rand.h>
 #include <assert.h>
 
-typedef unsigned char U8;
-typedef unsigned long U32;
+typedef uint8_t U8;
+typedef uint32_t U32;
 
 U8 cset[] = "BCDFGHJKMPQRTVWXY2346789";
 
 #define FIELD_BITS_2003 512
 #define FIELD_BYTES_2003 64
 
-void unpack2003(U32 *osfamily, U32 *hash, U32 *sig, U32 *prefix, U32 *raw)
+void unpack2003(U32 *osfamily, U32 *hash, U32 *sig, U32 *prefix, const U32 *raw)
 {
 	osfamily[0] = raw[0] & 0x7ff;
 	hash[0] = ((raw[0] >> 11) | (raw[1] << 21)) & 0x7fffffff;
@@ -23,7 +23,7 @@ void unpack2003(U32 *osfamily, U32 *hash, U32 *sig, U32 *prefix, U32 *raw)
 	prefix[0] = (raw[3] >> 8) & 0x3ff;
 }
 
-void pack2003(U32 *raw, U32 *osfamily, U32 *hash, U32 *sig, U32 *prefix)
+void pack2003(U32 *raw, const U32 *osfamily, const U32 *hash, const U32 *sig, const U32 *prefix)
 {
 	raw[0] = osfamily[0] | (hash[0] << 11);
 	raw[1] = (hash[0] >> 21) | (sig[0] << 10);
@@ -84,17 +84,17 @@ void base24(U8 *c, U32 *x)
 void print_product_key(U8 *pk)
 {
 	int i;
-	assert(strlen(pk) == 25);
+	assert(strlen((const char*)pk) == 25);
 	for (i = 0; i < 25; i++) {
 		putchar(pk[i]);
 		if (i != 24 && i % 5 == 4) putchar('-');
 	}
 }
 
-void verify2003(EC_GROUP *ec, EC_POINT *generator, EC_POINT *public_key, char *cdkey)
+void verify2003(EC_GROUP *ec, EC_POINT *generator, EC_POINT *public_key, const char *cdkey)
 {
 	U8 key[25];
-	int i, j, k;
+	size_t i, j, k;
 	
 	BN_CTX *ctx = BN_CTX_new();
 
@@ -289,7 +289,7 @@ void generate2003(U8 *pkey, EC_GROUP *ec, EC_POINT *generator, BIGNUM *order, BI
 	
 }
 
-int main()
+int main(void)
 {
 	BIGNUM *a, *b, *p, *gx, *gy, *pubx, *puby, *n, *priv;
 	BN_CTX *ctx = BN_CTX_new();
@@ -329,11 +329,11 @@ int main()
 	U32 osfamily[1], prefix[1];
 	
 	osfamily[0] = 1280;
-	RAND_pseudo_bytes((U8 *)prefix, 4);
+	RAND_bytes((U8 *)prefix, 4);
 	prefix[0] &= 0x3ff;
 	generate2003(pkey, ec, g, n, priv, osfamily, prefix);
 	print_product_key(pkey); printf("\n\n");
-	verify2003(ec, g, pub, pkey);
+	verify2003(ec, g, pub, (const char*)pkey);
 
 	BN_CTX_free(ctx);
 	
